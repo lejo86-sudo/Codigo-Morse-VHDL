@@ -5,6 +5,17 @@ El archivo principal de este proyecto es "proyecto_fsm.vhd", para abrirlo inicia
 Se buscó hacer uso de los comentarios para que la lectura del código sea más amena.
 A su vez, creé la página "DescripcionProyectoMorse.html" para detallar un poco más sobre las partes de este proyecto e incluí un simulador de código morse para cada letra.
 
+DIAGRAMA DE ESTADOS 
+<img width="1192" height="780" alt="Diagrama de Estados FSM Morse" src="https://github.com/user-attachments/assets/788125d2-c549-42ae-845b-204f269aef70" />
+
+Descripción del proyecto:
+<img width="1212" height="930" alt="image" src="https://github.com/user-attachments/assets/0145db1b-ead6-4f66-89d6-7f2c528e2d95" />
+<img width="1225" height="651" alt="image" src="https://github.com/user-attachments/assets/4158b6e2-d79c-4353-b3e0-30155b46ad01" />
+<img width="891" height="678" alt="image" src="https://github.com/user-attachments/assets/b8835fb4-fa2c-404a-baa4-05353879f83f" />
+
+
+
+
 El video de la prueba en la FPGA se encuentra en el siguiente link:
 https://drive.google.com/file/d/1dajfR80pV9o3lgtcBUVc6gKFNKgZ2WNK/view?usp=sharing
 
