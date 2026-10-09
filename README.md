@@ -3,6 +3,7 @@ Este es el desarrollo del parcial individual asignado por el docente para VHDL.
 El archivo principal de este proyecto es "proyecto_fsm.vhd", para abrirlo inicialmente se necesita abrir el archivo de proyecto "proyecto_fsm.qpf" y añadir los archivos
 "dock_divider.vhd", "hex_decoder.vhd", "morse_fsm.vhd", los cuales se integran como componentes en el archivo principal.
 Se buscó hacer uso de los comentarios para que la lectura del código sea más amena.
+A su vez, creé la página "DescripcionProyectoMorse.html" para detallar un poco más sobre las partes de este proyecto e incluí un simulador de código morse para cada letra.
 
 El video de la prueba en la FPGA se encuentra en el siguiente link:
 https://drive.google.com/file/d/1dajfR80pV9o3lgtcBUVc6gKFNKgZ2WNK/view?usp=sharing
