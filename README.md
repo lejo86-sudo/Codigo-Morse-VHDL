@@ -1,5 +1,6 @@
 # Codigo-Morse-VHDL
 ESTUDIANTE: ALEJANDRO JOSÉ GUEVARA RADA
+
 DOCENTE: FULVIO YESID VIVAS CANTERO
 
 Este es el desarrollo del parcial individual asignado por el docente para VHDL.
