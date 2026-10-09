@@ -1,0 +1,445 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Codificador Morse — FSM VHDL</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+
+    /* ---- LED Morse ---- */
+    #led-dot { transition: background 0.07s; }
+
+    /* ---- Timeline bars ---- */
+    .bar-dot  { background: var(--primary); }
+    .bar-dash  { background: #f59e0b; }
+    .bar-pause { background: var(--muted-foreground); opacity: 0.35; }
+
+    /* ---- Tab active ---- */
+    .tab-btn.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .tab-btn {
+      background: var(--card);
+      color: var(--muted-foreground);
+      border: 1px solid var(--border);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---- Arrow marker ---- */
+
+    /* Scrollable page */
+    body { font-family: inherit; }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased">
+
+  <!-- ===========================  HEADER  =========================== -->
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <div class="mb-6">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="text-2xl">📡</span>
+        <h1 class="text-2xl font-bold text-[var(--foreground)]">Codificador Morse — FSM VHDL</h1>
+      </div>
+      <p class="text-[var(--muted-foreground)] text-sm">Laboratorio de Sistemas Digitales · Cyclone III EP3C16F484C6 · Quartus II 13.1</p>
+    </div>
+
+    <!-- =====================  TAB NAV  ========================== -->
+    <div class="flex gap-2 mb-5 flex-wrap">
+      <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium" onclick="switchTab('specs')">📋 Especificaciones</button>
+      <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="switchTab('morse')">📶 Simulador Morse</button>
+      <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" onclick="switchTab('arch')">🏗️ Arquitectura</button>
+    </div>
+
+    <!-- =====================================================================
+         TAB 2 — ESPECIFICACIONES
+    ====================================================================== -->
+    <div id="tab-specs" class="tab-panel active">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Hardware -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">🖥️ Hardware objetivo</h3>
+          <table class="w-full text-sm">
+            <tbody>
+              <tr><td class="text-[var(--muted-foreground)] py-1">Familia FPGA</td><td class="font-mono font-medium">Cyclone III</td></tr>
+              <tr><td class="text-[var(--muted-foreground)] py-1">Dispositivo</td><td class="font-mono font-medium">EP3C16F484C6</td></tr>
+              <tr><td class="text-[var(--muted-foreground)] py-1">Herramienta</td><td class="font-mono font-medium">Quartus II 13.1</td></tr>
+              <tr><td class="text-[var(--muted-foreground)] py-1">Simulación</td><td class="font-mono font-medium">ModelSim-Altera</td></tr>
+              <tr><td class="text-[var(--muted-foreground)] py-1">Reloj</td><td class="font-mono font-medium">50 MHz (CLOCK_50)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pines -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">🔌 Mapa de pines y Displays</h3>
+          <table class="w-full text-sm">
+            <thead><tr class="text-[var(--muted-foreground)] text-xs"><th class="text-left pb-2">Señal VHDL</th><th class="text-left pb-2">Pin placa</th><th class="text-left pb-2">Función</th></tr></thead>
+            <tbody>
+              <tr><td class="font-mono py-1">CLOCK_50</td><td class="font-mono text-[var(--muted-foreground)]">PIN_R8</td><td>Reloj 50 MHz</td></tr>
+              <tr><td class="font-mono py-1">KEY(0)</td><td class="font-mono text-[var(--muted-foreground)]">KEY[0]</td><td>Reset asíncrono ↓</td></tr>
+              <tr><td class="font-mono py-1">KEY(1)</td><td class="font-mono text-[var(--muted-foreground)]">KEY[1]</td><td>Start TX ↓</td></tr>
+              <tr><td class="font-mono py-1">SW(2:0)</td><td class="font-mono text-[var(--muted-foreground)]">SW[2..0]</td><td>Selección letra</td></tr>
+              <tr><td class="font-mono py-1">LEDR(0)</td><td class="font-mono text-[var(--muted-foreground)]">LEDR[0]</td><td>Salida Morse (Flash)</td></tr>
+              <tr><td class="font-mono py-1">HEX0(6:0)</td><td class="font-mono text-[var(--muted-foreground)]">HEX0</td><td>Muestra la Letra (A-H)</td></tr>
+              <tr><td class="font-mono py-1">HEX1(6:0)</td><td class="font-mono text-[var(--muted-foreground)]">HEX1</td><td>Estado apagado</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Temporización -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">⏱️ Temporización</h3>
+          <div class="text-sm space-y-2">
+            <div class="bg-[var(--background)] rounded-lg p-3 font-mono text-xs text-[var(--muted-foreground)]">
+              tick = 50,000,000 × 0.5s = <span class="text-[var(--foreground)] font-bold">25,000,000 ciclos</span>
+            </div>
+            <table class="w-full text-sm mt-2">
+              <thead><tr class="text-[var(--muted-foreground)] text-xs"><th class="text-left pb-2">Símbolo</th><th class="text-left pb-2">Ticks</th><th class="text-left pb-2">Tiempo real</th></tr></thead>
+              <tbody>
+                <tr><td class="py-1 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#22c55e] inline-block"></span>Punto (dot)</td><td class="font-mono">1</td><td class="font-mono">0.5 s</td></tr>
+                <tr><td class="py-1 flex items-center gap-2"><span class="w-5 h-3 rounded bg-[#f59e0b] inline-block"></span>Raya (dash)</td><td class="font-mono">3</td><td class="font-mono">1.5 s</td></tr>
+                <tr><td class="py-1 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#6b7280] inline-block opacity-50"></span>Pausa</td><td class="font-mono">1</td><td class="font-mono">0.5 s</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Alfabeto -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">🔤 Alfabeto Morse (A–H)</h3>
+          <table class="w-full text-sm">
+            <thead><tr class="text-[var(--muted-foreground)] text-xs"><th class="text-left pb-2">SW[2:0]</th><th class="text-left pb-2">Letra</th><th class="text-left pb-2">Código</th><th class="text-left pb-2">Visual</th></tr></thead>
+            <tbody id="morse-table">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         TAB 3 — SIMULADOR MORSE
+    ====================================================================== -->
+    <div id="tab-morse" class="tab-panel">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+        <h2 class="font-semibold text-base mb-1">Simulador Visual de Código Morse</h2>
+        <p class="text-[var(--muted-foreground)] text-sm mb-5">Elige una letra y presiona START para ver el patrón del LED.</p>
+
+        <div class="flex flex-wrap gap-3 items-center mb-6">
+          <div>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">SW[2:0] — Letra</label>
+            <select id="letter-sel" class="bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm font-mono" onchange="updateLetterDisplay()">
+              <option value="000">000 — A ( .- )</option>
+              <option value="001">001 — B ( -... )</option>
+              <option value="010">010 — C ( -.-. )</option>
+              <option value="011">011 — D ( -.. )</option>
+              <option value="100">100 — E ( . )</option>
+              <option value="101">101 — F ( ..-. )</option>
+              <option value="110">110 — G ( --. )</option>
+              <option value="111">111 — H ( .... )</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Velocidad</label>
+            <select id="speed-sel" class="bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm">
+              <option value="500">Normal (0.5s/tick)</option>
+              <option value="200" selected>Rápido (0.2s/tick)</option>
+              <option value="100">Muy rápido (0.1s/tick)</option>
+            </select>
+          </div>
+          <div class="flex gap-2 mt-5">
+            <button id="btn-start" onclick="startMorse()"
+              class="px-5 py-2 rounded-lg text-sm font-semibold"
+              style="background:var(--primary);color:var(--primary-foreground)">
+              ▶ START (KEY[1])
+            </button>
+            <button onclick="resetMorse()"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--background)] border border-[var(--border)] text-[var(--muted-foreground)]">
+              ↺ RESET (KEY[0])
+            </button>
+          </div>
+        </div>
+
+        <!-- LED display -->
+        <div class="flex items-center gap-5 mb-5">
+          <div class="flex flex-col items-center gap-2">
+            <div id="led-dot" class="w-16 h-16 rounded-full border-4 transition-all duration-75"
+                 style="background:#111827;border-color:#374151;box-shadow:none;">
+            </div>
+            <span class="text-xs text-[var(--muted-foreground)]">LEDR[0]</span>
+          </div>
+          <div>
+            <div class="text-2xl font-bold font-mono" id="state-label">S_IDLE</div>
+            <div class="text-sm text-[var(--muted-foreground)]" id="sym-label">— Esperando start —</div>
+            <div class="text-xs text-[var(--muted-foreground)] mt-1" id="morse-text"></div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div>
+          <p class="text-xs text-[var(--muted-foreground)] mb-2">Timeline de pulsos:</p>
+          <div id="timeline" class="flex gap-1 flex-wrap min-h-8 items-center">
+            <span class="text-xs text-[var(--muted-foreground)] italic">— sin transmisión —</span>
+          </div>
+          <div class="flex gap-4 mt-2 text-xs text-[var(--muted-foreground)]">
+            <span class="flex items-center gap-1"><span class="inline-block w-4 h-3 rounded" style="background:var(--primary)"></span>Punto</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-8 h-3 rounded bg-[#f59e0b]"></span>Raya</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-4 h-3 rounded bg-[#374151]"></span>Pausa</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         TAB 4 — ARQUITECTURA
+    ====================================================================== -->
+    <div id="tab-arch" class="tab-panel">
+      <div class="space-y-4">
+
+        <!-- Jerarquía -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3">🏗️ Jerarquía de diseño</h3>
+          <div class="font-mono text-sm bg-[var(--background)] rounded-lg p-4 leading-relaxed text-[var(--muted-foreground)]">
+            <span class="text-[var(--foreground)] font-bold">proyecto_fsm</span> <span class="text-[#6366f1]">(Top-Level Estructural)</span><br>
+            &nbsp;&nbsp;├── <span class="text-[#3b82f6]">clock_divider</span> — Divisor de reloj controlado por <code>enable</code><br>
+            &nbsp;&nbsp;├── <span class="text-[#22c55e]">morse_fsm</span> — FSM (Máquina de Moore de 3 procesos)<br>
+            &nbsp;&nbsp;└── <span class="text-[#a855f7]">hex_decoder</span> (x2) — Controladores de display 7-segmentos
+          </div>
+        </div>
+
+        <!-- 3-process explanation -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3">⚙️ Estructura de 3 procesos (sin latches)</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="bg-[var(--background)] rounded-lg p-3 border border-[var(--border)]">
+              <div class="font-semibold text-[#3b82f6] mb-1">① P_STATE_REG</div>
+              <div class="text-[var(--muted-foreground)] text-xs">Proceso <strong>secuencial</strong>. Sensible a <code>clk</code> y <code>reset</code>. Registra el estado actual y los contadores en cada flanco de subida.</div>
+            </div>
+            <div class="bg-[var(--background)] rounded-lg p-3 border border-[var(--border)]">
+              <div class="font-semibold text-[#22c55e] mb-1">② P_NEXT_STATE</div>
+              <div class="text-[var(--muted-foreground)] text-xs">Proceso <strong>combinacional</strong>. Calcula el próximo estado según entradas y estado actual. Siempre asigna valor por defecto (evita latches).</div>
+            </div>
+            <div class="bg-[var(--background)] rounded-lg p-3 border border-[var(--border)]">
+              <div class="font-semibold text-[#f59e0b] mb-1">③ P_OUTPUT</div>
+              <div class="text-[var(--muted-foreground)] text-xs">Proceso <strong>Moore</strong>. La salida <code>morse_out</code> depende únicamente del estado actual — sin glitches por entradas.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Testbench -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3">🧪 Metodología de Testbench (Simulación)</h3>
+          <div class="space-y-3 text-sm text-[var(--muted-foreground)]">
+            <p>El archivo <code>tb_morse.vhd</code> verifica el diseño inyectando estímulos manualmente en el siguiente orden estricto:</p>
+            <ul class="list-disc pl-5 space-y-2">
+              <li><strong>Fase 1 - Prueba Letra A (<code>SW = "000"</code>):</strong> Iniciamos asignando <code>000</code> a los interruptores y damos un pulso de <code>KEY[1] = '0'</code>. La simulación espera de forma robusta monitorizando la salida <code>active</code>, comprobando que el LED destelle primero 1 ciclo de reloj (punto) y luego 3 ciclos (raya), separados por la pausa.</li>
+              <li><strong>Fase 2 - Prueba Letra B (<code>SW = "001"</code>):</strong> Cambiamos la entrada a <code>001</code> y enviamos un nuevo pulso de Start. Verificamos que se emita exactamente: raya, punto, punto, punto (<code>-...</code>). Validando así que contadores múltiples y pausas intermedias operen correctamente.</li>
+              <li><strong>Fase 3 - Interrupción con Letra H (<code>SW = "111"</code>):</strong> Asignamos <code>111</code> para transmitir 4 puntos (<code>....</code>). Sin embargo, a mitad de la transmisión de la secuencia, se fuerza asíncronamente el Reset bajando <code>KEY[0] = '0'</code>. Se comprueba mediante un <code>assert</code> que el sistema trunque la transmisión inmediatamente, apague el LED y regrese de inmediato al estado <code>S_IDLE</code> garantizando seguridad operativa.</li>
+              <li><strong>Generación de Reloj y Automatización:</strong> Todo esto se coordina bajo un reloj estimulado permanentemente a 50MHz, apoyado por el script <code>sim.do</code> que recompila y ejecuta la onda de ModelSim de forma automática.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Archivos -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+          <h3 class="font-semibold mb-3">📁 Archivos del proyecto</h3>
+          <div class="space-y-2 text-sm font-mono">
+            <div class="flex items-center gap-3 bg-[var(--background)] rounded-lg px-3 py-2">
+              <span class="text-[#3b82f6]">📄</span>
+              <span>clock_divider.vhd</span>
+              <span class="ml-auto text-xs text-[var(--muted-foreground)]">Temporizador base</span>
+            </div>
+            <div class="flex items-center gap-3 bg-[var(--background)] rounded-lg px-3 py-2">
+              <span class="text-[#a855f7]">📄</span>
+              <span>hex_decoder.vhd</span>
+              <span class="ml-auto text-xs text-[var(--muted-foreground)]">Control de displays (A-H)</span>
+            </div>
+            <div class="flex items-center gap-3 bg-[var(--background)] rounded-lg px-3 py-2">
+              <span class="text-[#22c55e]">📄</span>
+              <span>morse_fsm.vhd</span>
+              <span class="ml-auto text-xs text-[var(--muted-foreground)]">FSM principal</span>
+            </div>
+            <div class="flex items-center gap-3 bg-[var(--background)] rounded-lg px-3 py-2">
+              <span class="text-[#6366f1]">📄</span>
+              <span>proyecto_fsm.vhd</span>
+              <span class="ml-auto text-xs text-[var(--muted-foreground)]">Top-Level (síntesis)</span>
+            </div>
+            <div class="flex items-center gap-3 bg-[var(--background)] rounded-lg px-3 py-2">
+              <span class="text-[#f59e0b]">📄</span>
+              <span>tb_morse.vhd</span>
+              <span class="ml-auto text-xs text-[var(--muted-foreground)]">Testbench (solo simulación)</span>
+            </div>
+            <div class="flex items-center gap-3 bg-[var(--background)] rounded-lg px-3 py-2">
+              <span class="text-[#94a3b8]">⚙️</span>
+              <span>proyecto_fsm.qsf</span>
+              <span class="ml-auto text-xs text-[var(--muted-foreground)]">Config Quartus (actualizado)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end max-w -->
+
+  <!-- ===========================  JAVASCRIPT  =========================== -->
+  <script>
+    // ---- Tab switching ----
+    function switchTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    // ---- FSM node info ----
+    const nodeInfo = {
+      idle:  { title: 'S_IDLE — Estado de reposo',   color:'#64748b', out:'morse_out = 0', desc: 'El sistema espera a que el usuario presione KEY[1] (start, activo en bajo). El LED permanece apagado. Al detectar start=\'0\', transiciona a S_LOAD.' },
+      load:  { title: 'S_LOAD — Carga de letra',     color:'#3b82f6', out:'morse_out = 0', desc: 'Dura 1 ciclo de reloj. Lee los interruptores SW[2:0] y carga el patrón Morse (secuencia de puntos/rayas y su longitud) en el registro interno. Evalúa el primer símbolo para ir a S_DOT o S_DASH.' },
+      dot:   { title: 'S_DOT — Emitiendo punto',     color:'#22c55e', out:'morse_out = 1  ✦  duración: 1 tick (0.5 s)', desc: 'El LED se enciende durante 1 tick (0.5 s). Al terminar: si quedan símbolos, va a S_PAUSE; si era el último, va a S_DONE.' },
+      dash:  { title: 'S_DASH — Emitiendo raya',     color:'#f59e0b', out:'morse_out = 1  ✦  duración: 3 ticks (1.5 s)', desc: 'El LED se enciende durante 3 ticks (1.5 s). Un contador interno (tick_count 0→2) controla los 3 ticks. Al finalizar (cnt=2): va a S_PAUSE o S_DONE según si quedan símbolos.' },
+      pause: { title: 'S_PAUSE — Pausa inter-símbolo', color:'#a78bfa', out:'morse_out = 0  ✦  duración: 1 tick (0.5 s)', desc: 'Silencio de 0.5 s entre dos símbolos consecutivos de la misma letra. Evalúa el siguiente símbolo en la secuencia para decidir si va a S_DOT o S_DASH.' },
+      done:  { title: 'S_DONE — Transmisión completa', color:'#6366f1', out:'morse_out = 0', desc: 'Estado de transición de 1 ciclo. Indica que todos los símbolos fueron transmitidos. Automáticamente regresa a S_IDLE en el siguiente ciclo de reloj.' },
+    };
+    function showInfo(key) {
+      const n = nodeInfo[key];
+      document.getElementById('fsm-info').innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-3 h-3 rounded-full mt-1 shrink-0" style="background:${n.color}"></div>
+          <div>
+            <div class="font-semibold text-sm" style="color:${n.color}">${n.title}</div>
+            <div class="text-xs font-mono mt-0.5 text-[var(--muted-foreground)]">${n.out}</div>
+            <div class="text-xs mt-1 text-[var(--muted-foreground)]">${n.desc}</div>
+          </div>
+        </div>`;
+    }
+    function clearInfo() {
+      document.getElementById('fsm-info').innerHTML = '<p class="text-[var(--muted-foreground)] text-sm">← Pasa el cursor sobre un estado para ver detalles.</p>';
+    }
+
+    // ---- Morse data ----
+    const morseData = {
+      '000': { letter:'A', code:'.-',   seq:[0,1] },
+      '001': { letter:'B', code:'-...', seq:[1,0,0,0] },
+      '010': { letter:'C', code:'-.-.',  seq:[1,0,1,0] },
+      '011': { letter:'D', code:'-..',  seq:[1,0,0] },
+      '100': { letter:'E', code:'.',    seq:[0] },
+      '101': { letter:'F', code:'..-.',  seq:[0,0,1,0] },
+      '110': { letter:'G', code:'--.',  seq:[1,1,0] },
+      '111': { letter:'H', code:'....', seq:[0,0,0,0] },
+    };
+
+    // ---- Populate morse table ----
+    const tbody = document.getElementById('morse-table');
+    Object.entries(morseData).forEach(([sw, d]) => {
+      const visual = d.seq.map(s => s===0
+        ? '<span class="inline-block w-2 h-2 rounded-full bg-[#22c55e] mx-0.5"></span>'
+        : '<span class="inline-block w-5 h-2 rounded bg-[#f59e0b] mx-0.5"></span>'
+      ).join('');
+      tbody.innerHTML += `<tr>
+        <td class="font-mono py-1 text-[var(--muted-foreground)]">${sw}</td>
+        <td class="font-bold text-lg">${d.letter}</td>
+        <td class="font-mono">${d.code}</td>
+        <td class="flex items-center py-1">${visual}</td>
+      </tr>`;
+    });
+
+    // ---- Simulator ----
+    let simRunning = false, simTimer = null;
+
+    function ledOn() {
+      const led = document.getElementById('led-dot');
+      led.style.background = '#ef4444';
+      led.style.borderColor = '#f87171';
+      led.style.boxShadow = '0 0 24px 8px rgba(239,68,68,0.6)';
+    }
+    function ledOff() {
+      const led = document.getElementById('led-dot');
+      led.style.background = '#111827';
+      led.style.borderColor = '#374151';
+      led.style.boxShadow = 'none';
+    }
+    function setState(s, sub) {
+      document.getElementById('state-label').textContent = s;
+      document.getElementById('sym-label').textContent = sub || '';
+    }
+    function updateLetterDisplay() {
+      const sw = document.getElementById('letter-sel').value;
+      const d = morseData[sw];
+      document.getElementById('morse-text').textContent = `Letra ${d.letter}: ${d.code}`;
+    }
+    updateLetterDisplay();
+
+    function addTimelineBlock(type, ticks) {
+      const tl = document.getElementById('timeline');
+      if (tl.querySelector('.italic')) tl.innerHTML = '';
+      const w = type==='dash' ? 'w-12' : type==='dot' ? 'w-4' : 'w-4';
+      const bg = type==='dot' ? 'style="background:var(--primary)"' : type==='dash' ? 'class="bg-[#f59e0b]"' : 'class="bg-[#374151]"';
+      const el = document.createElement('div');
+      el.className = `h-6 rounded ${w} shrink-0`;
+      if (type==='dot') el.style.background='var(--primary)';
+      else if (type==='dash') el.style.background='#f59e0b';
+      else el.style.background='#374151', el.style.opacity='0.4';
+      tl.appendChild(el);
+    }
+
+    async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function startMorse() {
+      if (simRunning) return;
+      simRunning = true;
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('timeline').innerHTML = '';
+
+      const sw = document.getElementById('letter-sel').value;
+      const speed = parseInt(document.getElementById('speed-sel').value);
+      const d = morseData[sw];
+      const dot = speed, dash = speed * 3, pause = speed;
+
+      setState('S_LOAD', `Cargando letra ${d.letter} (${d.code})`);
+      ledOff();
+      await sleep(100);
+
+      for (let i = 0; i < d.seq.length; i++) {
+        const isDash = d.seq[i] === 1;
+        if (isDash) {
+          setState('S_DASH', `Símbolo ${i+1}/${d.seq.length}: RAYA (−)`);
+          addTimelineBlock('dash');
+          ledOn();
+          await sleep(dash);
+        } else {
+          setState('S_DOT', `Símbolo ${i+1}/${d.seq.length}: PUNTO (•)`);
+          addTimelineBlock('dot');
+          ledOn();
+          await sleep(dot);
+        }
+        if (i < d.seq.length - 1) {
+          setState('S_PAUSE', 'Pausa entre símbolos');
+          addTimelineBlock('pause');
+          ledOff();
+          await sleep(pause);
+        }
+      }
+
+      ledOff();
+      setState('S_DONE', `✓ Letra ${d.letter} transmitida`);
+      await sleep(200);
+      setState('S_IDLE', '— Esperando start —');
+      simRunning = false;
+      document.getElementById('btn-start').disabled = false;
+    }
+
+    function resetMorse() {
+      simRunning = false;
+      clearTimeout(simTimer);
+      ledOff();
+      setState('S_IDLE', '— Esperando start —');
+      document.getElementById('timeline').innerHTML = '<span class="text-xs text-[var(--muted-foreground)] italic">— sin transmisión —</span>';
+      document.getElementById('btn-start').disabled = false;
+    }
+  </script>
+</body>
+</html>
