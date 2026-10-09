@@ -1,4 +1,7 @@
 # Codigo-Morse-VHDL
+ESTUDIANTE: ALEJANDRO JOSÉ GUEVARA RADA
+DOCENTE: FULVIO YESID VIVAS CANTERO
+
 Este es el desarrollo del parcial individual asignado por el docente para VHDL.
 El archivo principal de este proyecto es "proyecto_fsm.vhd", para abrirlo inicialmente se necesita abrir el archivo de proyecto "proyecto_fsm.qpf" y añadir los archivos
 "dock_divider.vhd", "hex_decoder.vhd", "morse_fsm.vhd", los cuales se integran como componentes en el archivo principal.
